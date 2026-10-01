@@ -1,9 +1,14 @@
 # Bottle rocket fin control - Circuit Playground Bluefruit (CircuitPython)
 # Control with the Adafruit "Bluefruit LE Connect" iPhone app > Controller > Control Pad.
 #
-# Arrows:   LEFT / RIGHT -> servo 1 (yaw fin)    UP / DOWN -> servo 2 (pitch fin)
-# Button 1: re-center both fins.  Button 2/3/4: fin throw 10 / 20 / 30 degrees.
-# Hold an arrow = fin deflects; release = fin returns to center.
+# Two OPPOSITE fins are on servos (servo 1 = fin A, servo 2 = fin B).
+#   UP / DOWN    -> both fins tilt the SAME way  -> pushes the tail sideways
+#                   (steers the nose in the one plane perpendicular to the fins)
+#   LEFT / RIGHT -> fins tilt OPPOSITE ways      -> rolls (spins) the rocket
+# Roll lets you turn the steering plane to point where you want, so together
+# the arrows can aim the rocket any direction.
+# Button 1: re-center.  Button 2/3/4: fin throw 10 / 20 / 30 degrees.
+# Release an arrow = those fins return to center.
 
 import time
 import board
@@ -19,8 +24,10 @@ from adafruit_bluefruit_connect.button_packet import ButtonPacket
 CENTER_1 = 90        # servo 1 angle when fin is straight (trim so fin looks flush)
 CENTER_2 = 90        # servo 2 angle when fin is straight
 THROW = 20           # degrees of fin deflection from center
-INVERT_1 = False     # flip direction if the rocket turns the wrong way
-INVERT_2 = False
+INVERT_1 = False     # flip a servo if its fin tilts the wrong way
+INVERT_2 = True      # fins face opposite ways, so servo 2 is usually mirrored.
+                     # CALIBRATE: press UP - both fins' trailing edges must
+                     # move toward the same side. If not, flip this.
 LINK_LOST_CENTER = True   # center fins if the phone disconnects
 
 # Servo signal wires: A1 and A2 pads. Power servos from a separate 4xAA pack
@@ -35,12 +42,14 @@ def clamp(a):
     return max(0, min(180, a))
 
 
-def set_fins(x, y):
-    """x, y in {-1, 0, 1}: x = left/right, y = down/up."""
-    x = -x if INVERT_1 else x
-    y = -y if INVERT_2 else y
-    servo1.angle = clamp(CENTER_1 + x * THROW)
-    servo2.angle = clamp(CENTER_2 + y * THROW)
+def set_fins(roll, pitch):
+    """roll, pitch in {-1, 0, 1}: roll = left/right, pitch = down/up."""
+    a = max(-1, min(1, pitch + roll))   # fin A: collective + differential
+    b = max(-1, min(1, pitch - roll))   # fin B: collective - differential
+    a = -a if INVERT_1 else a
+    b = -b if INVERT_2 else b
+    servo1.angle = clamp(CENTER_1 + a * THROW)
+    servo2.angle = clamp(CENTER_2 + b * THROW)
 
 
 set_fins(0, 0)

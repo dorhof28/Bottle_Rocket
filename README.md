@@ -27,16 +27,25 @@ Power the board separately (USB or its battery connector).
 ## Use
 1. Open Bluefruit LE Connect, tap the "CIRCUITPYxxxx" device -> **Connect**.
 2. Choose **Controller** -> **Control Pad**.
-3. Left/Right moves servo 1, Up/Down moves servo 2. Releasing an arrow
-   re-centers that fin. Buttons 1-4: center / 10 / 20 / 30 degree throw.
+3. Up/Down: both fins tilt the same way (steers in one plane). Left/Right:
+   fins tilt opposite ways (rolls the rocket). Releasing re-centers.
+   Buttons 1-4: center / 10 / 20 / 30 degree throw.
+
+## How one pair of fins steers
+A fin pair can only push the tail sideways in the plane perpendicular to the
+fins, so Up/Down steers just one axis. To go "left" or "right" you first roll
+the rocket (Left/Right arrows) until that steering plane points the way you
+want, then use Up/Down. Fins on servos: mount them opposite each other.
+**Calibrate on the bench:** press Up - both fins' trailing edges should move to
+the same side; press Left - they should move opposite. If Up looks wrong, flip
+`INVERT_2` (or `INVERT_1`).
 
 ## Tuning
 Edit the top of `code.py`: `CENTER_1/2` (trim so fins are flush), `THROW`,
 `INVERT_1/2` (if the rocket steers the wrong way).
 
 ## Notes
-- Assumes one fin handles left/right and the other up/down (fins on adjacent
-  sides). Tell me if your fins are positioned differently.
+- Because only one pair moves, the other pair stays fixed as stabilizers.
 - The Circuit Playground Bluefruit has an accelerometer built in but **no
   gyroscope**; the gyro would be a separate sensor (e.g. over I2C). Not used
   yet - stabilization/auto-correction could be added later.
