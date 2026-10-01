@@ -18,14 +18,15 @@ Steer two fin servos from the iPhone with arrow buttons, over Bluetooth.
 Power the board separately (USB or its battery connector).
 
 ## Install
-1. Install CircuitPython 9.x for Circuit Playground Bluefruit
-   (circuitpython.org/board/circuitplayground_bluefruit).
-2. From the matching Adafruit CircuitPython Library Bundle, copy these into
-   `CIRCUITPY/lib`: `adafruit_ble`, `adafruit_bluefruit_connect`, `adafruit_motor`.
-3. Copy `code.py` to `CIRCUITPY`.
+1. In Arduino IDE, add Adafruit's board package URL under Preferences >
+   Additional Boards Manager URLs:
+   `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json`
+2. Boards Manager: install **Adafruit nRF52**.
+3. Select board **Adafruit Circuit Playground Bluefruit**.
+4. Open `bottle_rocket/bottle_rocket.ino` and upload.
 
 ## Use
-1. Open Bluefruit LE Connect, tap the "CIRCUITPYxxxx" device -> **Connect**.
+1. Open Bluefruit LE Connect, tap "BottleRocket" -> **Connect**.
 2. Choose **Controller** -> **Control Pad**.
 3. Up/Down: both fins tilt the same way (steers in one plane). Left/Right:
    fins tilt opposite ways (rolls the rocket). Releasing re-centers.
@@ -41,8 +42,8 @@ the same side; press Left - they should move opposite. If Up looks wrong, flip
 `INVERT_2` (or `INVERT_1`).
 
 ## Tuning
-Edit the top of `code.py`: `CENTER_1/2` (trim so fins are flush), `THROW`,
-`INVERT_1/2` (if the rocket steers the wrong way).
+Edit the top of the sketch: `CENTER_1/2` (trim so fins are flush), `THROW`,
+`INVERT_1/2`.
 
 ## Notes
 - Because only one pair moves, the other pair stays fixed as stabilizers.
