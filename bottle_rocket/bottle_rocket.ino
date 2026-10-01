@@ -1,15 +1,3 @@
-// Bottle rocket fin control - Circuit Playground Bluefruit
-// Control with the Adafruit "Bluefruit LE Connect" iPhone app > Controller > Control Pad.
-//
-// Two OPPOSITE fins are on servos (servo 1 = fin A, servo 2 = fin B).
-//   UP / DOWN    -> both fins tilt the SAME way  -> pushes the tail sideways
-//                   (steers the nose in the one plane perpendicular to the fins)
-//   LEFT / RIGHT -> fins tilt OPPOSITE ways      -> rolls (spins) the rocket
-// Roll lets you turn the steering plane to point where you want, so together
-// the arrows can aim the rocket any direction.
-// Button 1: re-center.  Button 2/3/4: fin throw 10 / 20 / 30 degrees.
-// Release an arrow = those fins return to center.
-
 #include <bluefruit.h>
 #include <Servo.h>
 

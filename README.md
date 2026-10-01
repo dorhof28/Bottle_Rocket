@@ -2,12 +2,6 @@
 
 Steer two fin servos from the iPhone with arrow buttons, over Bluetooth.
 
-## What you need
-- **Circuit Playground Bluefruit** (the one with Bluetooth - the older Circuit
-  Playground Express has no BLE and won't work with a phone).
-- 2 hobby servos, plus a separate 4xAA (or similar 4.8-6V) battery pack.
-- iPhone app: **Bluefruit LE Connect** (free, by Adafruit).
-
 ## Wiring
 | Servo wire | Goes to |
 |---|---|
