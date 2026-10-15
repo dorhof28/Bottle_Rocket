@@ -1,5 +1,6 @@
 #include <bluefruit.h>
 #include <Servo.h>
+#include <Wire.h>
 
 int CENTER_1 = 90;        // servo 1 angle when fin is straight (trim so fin looks flush)
 int CENTER_2 = 90;        // servo 2 angle when fin is straight
@@ -10,6 +11,13 @@ bool INVERT_2 = true;     // fins face opposite ways, so servo 2 is usually mirr
                           // move toward the same side. If not, flip this.
 bool LINK_LOST_CENTER = true;   // center fins if the phone disconnects
 
+// gyro settings (MPU6050 on the SDA / SCL pads)
+const int GYRO_ADDR = 0x68;
+float LEAN_GAIN = 0.03;   // fin push per degree of lean
+float RATE_GAIN = 0.008;  // fin push per degree/sec
+float SPIN_GAIN = 0.01;   // fin push against spinning
+float STAB_SIGN = 1;      // set to -1 if the fins move the wrong way when you tilt it
+
 // Servo signal wires: A1 and A2 pads. Power servos from a separate 4xAA pack
 // (common ground with the board), NOT the board's 3.3V pad.
 Servo servo1;
@@ -18,18 +26,81 @@ BLEUart bleuart;
 
 int rollCmd = 0;
 int pitchCmd = 0;
+bool stabilize = false;
 
-int clampInt(int v, int lo, int hi) {
+float leanAngle = 0;
+float biasX = 0, biasZ = 0;
+unsigned long lastRead = 0;
+
+float clampF(float v, float lo, float hi) {
   return v < lo ? lo : (v > hi ? hi : v);
 }
 
-void setFins(int roll, int pitch) {
-  int a = clampInt(pitch + roll, -1, 1);
-  int b = clampInt(pitch - roll, -1, 1);
+void setFins(float roll, float pitch) {
+  float a = clampF(pitch + roll, -1, 1);
+  float b = clampF(pitch - roll, -1, 1);
   if (INVERT_1) a = -a;
   if (INVERT_2) b = -b;
-  servo1.write(clampInt(CENTER_1 + a * THROW, 0, 180));
-  servo2.write(clampInt(CENTER_2 + b * THROW, 0, 180));
+  servo1.write((int)clampF(CENTER_1 + a * THROW, 0, 180));
+  servo2.write((int)clampF(CENTER_2 + b * THROW, 0, 180));
+}
+
+void readGyro(float &x, float &z) {
+  Wire.beginTransmission(GYRO_ADDR);
+  Wire.write(0x43);
+  Wire.endTransmission(false);
+  Wire.requestFrom(GYRO_ADDR, 6);
+  int xh = Wire.read();
+  int xl = Wire.read();
+  Wire.read();
+  Wire.read();
+  int zh = Wire.read();
+  int zl = Wire.read();
+  int16_t gx = (xh << 8) | xl;
+  int16_t gz = (zh << 8) | zl;
+  x = gx / 65.5;
+  z = gz / 65.5;
+}
+
+void gyroSetup() {
+  Wire.begin();
+  Wire.beginTransmission(GYRO_ADDR);
+  Wire.write(0x6B);
+  Wire.write(0);
+  Wire.endTransmission();
+  Wire.beginTransmission(GYRO_ADDR);
+  Wire.write(0x1B);
+  Wire.write(0x08);
+  Wire.endTransmission();
+  delay(100);
+
+  // average a bunch of readings while it sits still
+  float sx = 0, sz = 0, x, z;
+  for (int i = 0; i < 200; i++) {
+    readGyro(x, z);
+    sx += x;
+    sz += z;
+    delay(5);
+  }
+  biasX = sx / 200;
+  biasZ = sz / 200;
+}
+
+void updateStabilize() {
+  unsigned long now = millis();
+  if (now - lastRead < 10) return;
+  float dt = (now - lastRead) / 1000.0;
+  lastRead = now;
+
+  float rx, rz;
+  readGyro(rx, rz);
+  rx -= biasX;
+  rz -= biasZ;
+  leanAngle += rx * dt;
+
+  float lean = (leanAngle * LEAN_GAIN + rx * RATE_GAIN) * STAB_SIGN;
+  float spin = rz * SPIN_GAIN * STAB_SIGN;
+  setFins(rollCmd - spin, pitchCmd - lean);
 }
 
 void handleButton(char b, bool down) {
@@ -39,11 +110,17 @@ void handleButton(char b, bool down) {
     case '6': pitchCmd = down ? -1 : (pitchCmd == -1 ? 0 : pitchCmd); break;
     case '5': pitchCmd = down ? 1 : (pitchCmd == 1 ? 0 : pitchCmd); break;
     case '1': if (down) rollCmd = pitchCmd = 0; break;
-    case '2': if (down) THROW = 10; break;
-    case '3': if (down) THROW = 20; break;
-    case '4': if (down) THROW = 30; break;
+    case '2':
+      if (down) {
+        stabilize = !stabilize;
+        leanAngle = 0;
+        lastRead = millis();
+      }
+      break;
+    case '3': if (down) THROW = (THROW >= 30) ? 10 : THROW + 10; break;
+    case '4': if (down) leanAngle = 0; break;
   }
-  setFins(rollCmd, pitchCmd);
+  if (!stabilize) setFins(rollCmd, pitchCmd);
 }
 
 void startAdv() {
@@ -59,13 +136,14 @@ void startAdv() {
 
 void disconnectCallback(uint16_t conn_handle, uint8_t reason) {
   rollCmd = pitchCmd = 0;
-  if (LINK_LOST_CENTER) setFins(0, 0);
+  if (LINK_LOST_CENTER && !stabilize) setFins(0, 0);
 }
 
 void setup() {
   servo1.attach(A1);
   servo2.attach(A2);
   setFins(0, 0);
+  gyroSetup();
 
   Bluefruit.begin();
   Bluefruit.setName("BottleRocket");
@@ -88,4 +166,6 @@ void loop() {
     if ((uint8_t)~sum != p[4]) continue;
     handleButton((char)p[2], p[3] == '1');
   }
+
+  if (stabilize) updateStabilize();
 }

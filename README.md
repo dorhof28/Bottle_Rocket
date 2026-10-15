@@ -17,14 +17,25 @@ Power the board separately (USB or its battery connector).
    `https://adafruit.github.io/arduino-board-index/package_adafruit_index.json`
 2. Boards Manager: install **Adafruit nRF52**.
 3. Select board **Adafruit Circuit Playground Bluefruit**.
-4. Open `bottle_rocket/bottle_rocket.ino` and upload.
+4. Open one of the sketches below and upload.
+
+## Sketches
+- `bottle_rocket/` - phone arrows plus gyro lean correction you can switch on
+  from the app.
+- `bottle_rocket_stabilize/` - just the gyro lean correction, no phone.
+- `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
+  them 3 times, 30 seconds apart.
+
+The gyro is wired to the SDA and SCL pads (plus 3.3V and GND). The code
+assumes an MPU6050. A different gyro chip needs different register reads.
 
 ## Use
 1. Open Bluefruit LE Connect, tap "BottleRocket" -> **Connect**.
 2. Choose **Controller** -> **Control Pad**.
 3. Up/Down: both fins tilt the same way (steers in one plane). Left/Right:
    fins tilt opposite ways (rolls the rocket). Releasing re-centers.
-   Buttons 1-4: center / 10 / 20 / 30 degree throw.
+   Button 1: center. Button 2: gyro correction on/off. Button 3: cycles the
+   fin throw 10 / 20 / 30. Button 4: sets the current lean as level.
 
 ## How one pair of fins steers
 A fin pair can only push the tail sideways in the plane perpendicular to the
@@ -46,3 +57,16 @@ Edit the top of the sketch: `CENTER_1/2` (trim so fins are flush), `THROW`,
   yet - stabilization/auto-correction could be added later.
 - Bluetooth range is only ~10-30 m, and signal from inside a flying rocket is
   unreliable. Test on the ground first, with the rocket held in your hand.
+
+## Gyro correction
+Keep the rocket still when it powers on, it calibrates the gyro for a second
+or two. When it is on, the fins push against the lean (arrows still add on
+top). Bench test: tilt the nose one way and the fin trailing edges should
+swing the other way. If they go the same way, set `STAB_SIGN` to -1. The
+gyro X axis is the lean the fins can fix and Z is the spin along the rocket
+body, so turn the sensor to match or swap the axes in `readGyro`.
+
+## Launch sketch
+Launch is detected by the board's accelerometer (about 2.5 g). Press the left
+button on the board to start it on the bench. The three sweeps happen at 30,
+60 and 90 seconds after launch.
