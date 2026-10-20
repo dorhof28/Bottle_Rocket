@@ -20,7 +20,7 @@ BLEUart bleuart;
 int gyroAddr = 0x6B;
 float biasX = 0, biasZ = 0;
 float lean = 0;
-unsigned long lastRead = 0;
+long lastRead = 0;
 
 int rollCmd = 0;
 int pitchCmd = 0;
@@ -29,7 +29,7 @@ int pitchCmd = 0;
 int mode = 0;
 int pressCount = 0;
 int zigStep = 0;
-unsigned long zigTime = 0;
+long zigTime = 0;
 
 float limit(float v, float lo, float hi) {
   if (v < lo) return lo;
@@ -43,12 +43,14 @@ void setFins(float roll, float pitch) {
   float b = limit(pitch - roll, -1, 1);
   if (flip1) a = -a;
   if (flip2) b = -b;
-  servo1.write((int)limit(center1 + a * throwAmt, 0, 180));
-  servo2.write((int)limit(center2 + b * throwAmt, 0, 180));
+  int angle1 = center1 + a * throwAmt;
+  int angle2 = center2 + b * throwAmt;
+  servo1.write(limit(angle1, 0, 180));
+  servo2.write(limit(angle2, 0, 180));
 }
 
 // gyro stuff
-void writeReg(uint8_t reg, uint8_t val) {
+void writeReg(int reg, int val) {
   Wire.beginTransmission(gyroAddr);
   Wire.write(reg);
   Wire.write(val);
@@ -79,8 +81,12 @@ void readGyro(float &x, float &z) {
   Wire.read();
   int zl = Wire.read();
   int zh = Wire.read();
-  x = (int16_t)((xh << 8) | xl) * 0.0175;
-  z = (int16_t)((zh << 8) | zl) * 0.0175;
+  int rawX = xh * 256 + xl;
+  int rawZ = zh * 256 + zl;
+  if (rawX > 32767) rawX = rawX - 65536;
+  if (rawZ > 32767) rawZ = rawZ - 65536;
+  x = rawX * 0.0175;
+  z = rawZ * 0.0175;
 }
 
 void startGyro() {
@@ -106,7 +112,7 @@ void startGyro() {
 
 // fins fight the lean
 void runGyro() {
-  unsigned long now = millis();
+  long now = millis();
   if (now - lastRead < 10) return;
   float dt = (now - lastRead) / 1000.0;
   lastRead = now;
@@ -149,7 +155,7 @@ void changeMode(int newMode) {
 }
 
 // same button again turns the mode off
-void toggleMode(int m, const char *name) {
+void toggleMode(int m, String name) {
   if (mode == m) {
     changeMode(0);
     bleuart.print(name);
@@ -162,7 +168,7 @@ void toggleMode(int m, const char *name) {
 }
 
 // 1 gyro, 2 zigzag, 3 push button, 4 stop everything, arrows are 5-8
-void handleButton(char b, bool down) {
+void handleButton(int b, bool down) {
   if (!down) {
     if (b == '7' && rollCmd == -1) rollCmd = 0;
     if (b == '8' && rollCmd == 1) rollCmd = 0;
@@ -218,13 +224,13 @@ void loop() {
       bleuart.read();
       continue;
     }
-    uint8_t p[5];
+    int p[5];
     for (int i = 0; i < 5; i++) p[i] = bleuart.read();
     if (p[1] != 'B') continue;
-    uint8_t sum = 0;
-    for (int i = 0; i < 4; i++) sum += p[i];
-    if ((uint8_t)~sum != p[4]) continue;
-    handleButton((char)p[2], p[3] == '1');
+    int sum = 0;
+    for (int i = 0; i < 4; i++) sum = sum + p[i];
+    if (255 - (sum % 256) != p[4]) continue;
+    handleButton(p[2], p[3] == '1');
   }
 
   if (mode == 1) runGyro();
