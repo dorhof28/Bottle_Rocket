@@ -26,8 +26,7 @@ Power the board separately (USB or its battery connector).
 - `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
   them 3 times, 30 seconds apart.
 
-The gyro is wired to the SDA and SCL pads (plus 3.3V and GND). The code
-assumes an MPU6050. A different gyro chip needs different register reads.
+The gyro is an Adafruit L3GD20H, see the gyro wiring below.
 
 ## Use
 1. Open Bluefruit LE Connect, tap "BottleRocket" -> **Connect**.
@@ -57,6 +56,18 @@ Edit the top of the sketch: `CENTER_1/2` (trim so fins are flush), `THROW`,
   yet - stabilization/auto-correction could be added later.
 - Bluetooth range is only ~10-30 m, and signal from inside a flying rocket is
   unreliable. Test on the ground first, with the rocket held in your hand.
+
+## Gyro wiring (L3GD20H)
+| Gyro pin | Board pad |
+|---|---|
+| VIN | 3.3V |
+| GND | GND |
+| SCL | SCL (A4) |
+| SDA | SDA (A5) |
+
+Leave the other pins alone. The code finds the chip at 0x6B or 0x6A on its
+own. If the board just sits there after power up, the gyro wasn't found, so
+check the wiring.
 
 ## Gyro correction
 Keep the rocket still when it powers on, it calibrates the gyro for a second

@@ -7,8 +7,7 @@ int THROW = 20;           // degrees of fin deflection from center
 bool INVERT_1 = false;
 bool INVERT_2 = true;
 
-// gyro settings (MPU6050 on the SDA / SCL pads)
-const int GYRO_ADDR = 0x68;
+// gyro settings (L3GD20H on the SDA / SCL pads)
 float LEAN_GAIN = 0.03;   // fin push per degree of lean
 float RATE_GAIN = 0.008;  // fin push per degree/sec
 float SPIN_GAIN = 0.01;   // fin push against spinning
@@ -20,6 +19,28 @@ Servo servo2;
 float leanAngle = 0;
 float biasX = 0, biasZ = 0;
 unsigned long lastRead = 0;
+
+int GYRO_ADDR = 0x6B;
+
+void writeReg(uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(GYRO_ADDR);
+  Wire.write(reg);
+  Wire.write(val);
+  Wire.endTransmission();
+}
+
+bool findGyro() {
+  int tries[2] = {0x6B, 0x6A};
+  for (int i = 0; i < 2; i++) {
+    GYRO_ADDR = tries[i];
+    Wire.beginTransmission(GYRO_ADDR);
+    Wire.write(0x0F);
+    Wire.endTransmission(false);
+    Wire.requestFrom(GYRO_ADDR, 1);
+    if (Wire.available() && Wire.read() == 0xD7) return true;
+  }
+  return false;
+}
 
 float clampF(float v, float lo, float hi) {
   return v < lo ? lo : (v > hi ? hi : v);
@@ -36,19 +57,19 @@ void setFins(float roll, float pitch) {
 
 void readGyro(float &x, float &z) {
   Wire.beginTransmission(GYRO_ADDR);
-  Wire.write(0x43);
+  Wire.write(0xA8);
   Wire.endTransmission(false);
   Wire.requestFrom(GYRO_ADDR, 6);
-  int xh = Wire.read();
   int xl = Wire.read();
+  int xh = Wire.read();
   Wire.read();
   Wire.read();
-  int zh = Wire.read();
   int zl = Wire.read();
+  int zh = Wire.read();
   int16_t gx = (xh << 8) | xl;
   int16_t gz = (zh << 8) | zl;
-  x = gx / 65.5;
-  z = gz / 65.5;
+  x = gx * 0.0175;
+  z = gz * 0.0175;
 }
 
 void setup() {
@@ -57,14 +78,11 @@ void setup() {
   setFins(0, 0);
 
   Wire.begin();
-  Wire.beginTransmission(GYRO_ADDR);
-  Wire.write(0x6B);
-  Wire.write(0);
-  Wire.endTransmission();
-  Wire.beginTransmission(GYRO_ADDR);
-  Wire.write(0x1B);
-  Wire.write(0x08);
-  Wire.endTransmission();
+  if (!findGyro()) {
+    while (1) delay(100);
+  }
+  writeReg(0x20, 0x0F);
+  writeReg(0x23, 0x10);
   delay(100);
 
   // keep the rocket still for a second or two here
