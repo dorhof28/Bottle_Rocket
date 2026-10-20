@@ -24,6 +24,8 @@ Power the board separately (USB or its battery connector).
   from the app.
 - `bottle_rocket_stabilize/` - just the gyro lean correction, no phone.
 - `bottle_rocket_demo/` - everything for the demo in one sketch, see below.
+- `bottle_rocket_all/` - everything from the phone, upload this one for the
+  demo (see below).
 - `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
   them 3 times, 30 seconds apart.
 
@@ -83,16 +85,19 @@ Launch is detected by the board's accelerometer (about 2.5 g). Press the left
 button on the board to start it on the bench. The three sweeps happen at 30,
 60 and 90 seconds after launch.
 
-## Demo sketch
-Needs the Adafruit NeoPixel library (Library Manager). The light on the board
-shows which mode it is in. Button B on the board switches mode:
+## All-in-one sketch (bottle_rocket_all)
+Connect with Bluefruit LE Connect, then Controller > Control Pad. The Control
+Pad has no real switches, so the numbered buttons act as them. Press again to
+turn a mode off.
 
-| Light | Mode |
+| Button | What it does |
 |---|---|
-| Blue | Phone arrows (connect with Bluefruit LE Connect) |
-| Green | Gyro, fins move opposite to the lean |
-| Yellow | Button A: press once for left, twice for center, three times for right |
-| Purple | Zigzag, keeps repeating |
+| Arrows | Remote control of the fins |
+| 1 | Gyro on/off, fins move opposite to the lean |
+| 2 | Zigzag on/off |
+| 3 | Push button: once = left, twice = center, three times = right, then repeats |
+| 4 | Stop everything and center the fins |
 
-Keep it still for a second or two when it powers on. Left and right in the
-button and zigzag modes mean both fins tilting the same way.
+The app also has a UART screen if you want to see "gyro on", "zigzag off" etc.
+Keep the rocket still for a second or two at power up. Left and right in
+zigzag and push button mean both fins tilting the same way.
