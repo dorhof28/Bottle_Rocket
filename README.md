@@ -23,6 +23,7 @@ Power the board separately (USB or its battery connector).
 - `bottle_rocket/` - phone arrows plus gyro lean correction you can switch on
   from the app.
 - `bottle_rocket_stabilize/` - just the gyro lean correction, no phone.
+- `bottle_rocket_demo/` - everything for the demo in one sketch, see below.
 - `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
   them 3 times, 30 seconds apart.
 
@@ -81,3 +82,17 @@ body, so turn the sensor to match or swap the axes in `readGyro`.
 Launch is detected by the board's accelerometer (about 2.5 g). Press the left
 button on the board to start it on the bench. The three sweeps happen at 30,
 60 and 90 seconds after launch.
+
+## Demo sketch
+Needs the Adafruit NeoPixel library (Library Manager). The light on the board
+shows which mode it is in. Button B on the board switches mode:
+
+| Light | Mode |
+|---|---|
+| Blue | Phone arrows (connect with Bluefruit LE Connect) |
+| Green | Gyro, fins move opposite to the lean |
+| Yellow | Button A: press once for left, twice for center, three times for right |
+| Purple | Zigzag, keeps repeating |
+
+Keep it still for a second or two when it powers on. Left and right in the
+button and zigzag modes mean both fins tilting the same way.
