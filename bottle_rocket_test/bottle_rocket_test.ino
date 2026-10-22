@@ -2,13 +2,14 @@
 #include <Servo.h>
 #include <Wire.h>
 
-// open the serial monitor (115200) to see the results
+// open the serial monitor (115200) and type a letter then enter
 // servo 1 is on A3, servo 2 is on A2
 
 Servo servo1;
 Servo servo2;
 BLEUart bleuart;
 int gyroAddr = 0x6B;
+bool gyroOk = false;
 
 void writeReg(int reg, int val) {
   Wire.beginTransmission(gyroAddr);
@@ -40,56 +41,49 @@ float readAxis(int lowReg) {
   return raw * 0.0175;
 }
 
-void testGyro() {
-  Serial.println("--- gyro ---");
+void startGyro() {
   Wire.begin();
   int id = checkAddress(0x6B);
   if (id == 0) id = checkAddress(0x6A);
 
   if (id == 0) {
-    Serial.println("FAIL: nothing answered at 0x6B or 0x6A");
+    Serial.println("gyro FAIL: nothing answered at 0x6B or 0x6A");
     Serial.println("check VIN, GND, SCL, SDA wires");
     return;
   }
-  Serial.print("something answered at 0x");
-  Serial.println(gyroAddr, HEX);
   if (id != 0xD7) {
-    Serial.print("FAIL: wrong chip id, got 0x");
+    Serial.print("gyro FAIL: wrong chip id, got 0x");
     Serial.println(id, HEX);
     return;
   }
-  Serial.println("PASS: L3GD20H found");
-
   writeReg(0x20, 0x0F);
   writeReg(0x23, 0x10);
-  delay(100);
-
-  Serial.println("tilt and spin it for 5 seconds, numbers should change");
-  float biggest = 0;
-  for (int i = 0; i < 25; i++) {
-    float x = readAxis(0xA8);
-    float y = readAxis(0xAA);
-    float z = readAxis(0xAC);
-    Serial.print("x ");
-    Serial.print(x);
-    Serial.print("  y ");
-    Serial.print(y);
-    Serial.print("  z ");
-    Serial.println(z);
-    if (abs(x) > biggest) biggest = abs(x);
-    if (abs(y) > biggest) biggest = abs(y);
-    if (abs(z) > biggest) biggest = abs(z);
-    delay(200);
-  }
-  if (biggest > 20) {
-    Serial.println("PASS: gyro readings move");
-  } else {
-    Serial.println("WARNING: readings barely changed, did you move it?");
-  }
+  gyroOk = true;
+  Serial.print("gyro PASS: found at 0x");
+  Serial.println(gyroAddr, HEX);
 }
 
-void sweepServo(Servo &s, String name) {
-  Serial.print("watch ");
+// prints gyro numbers until you type something
+void showGyro() {
+  if (!gyroOk) {
+    Serial.println("gyro was not found, nothing to read");
+    return;
+  }
+  Serial.println("tilt it, type anything to stop");
+  while (!Serial.available()) {
+    Serial.print("x ");
+    Serial.print(readAxis(0xA8));
+    Serial.print("  y ");
+    Serial.print(readAxis(0xAA));
+    Serial.print("  z ");
+    Serial.println(readAxis(0xAC));
+    delay(300);
+  }
+  while (Serial.available()) Serial.read();
+}
+
+void moveServo(Servo &s, String name) {
+  Serial.print("moving ");
   Serial.println(name);
   s.write(90);
   delay(500);
@@ -99,20 +93,10 @@ void sweepServo(Servo &s, String name) {
   delay(700);
   s.write(90);
   delay(500);
+  Serial.println("done, did it move?");
 }
 
-void testServos() {
-  Serial.println("--- servos ---");
-  servo1.attach(A3);
-  servo2.attach(A2);
-  sweepServo(servo1, "servo 1 (A3)");
-  sweepServo(servo2, "servo 2 (A2)");
-  Serial.println("servo that didn't move: check its power, ground and signal wire");
-  Serial.println("if the board reset when they moved, they need a battery pack");
-}
-
-void testBluetooth() {
-  Serial.println("--- bluetooth ---");
+void startBluetooth() {
   Bluefruit.begin();
   Bluefruit.setName("BottleRocket");
   bleuart.begin();
@@ -120,46 +104,42 @@ void testBluetooth() {
   Bluefruit.Advertising.addTxPower();
   Bluefruit.Advertising.addService(bleuart);
   Bluefruit.ScanResponse.addName();
+  Bluefruit.Advertising.restartOnDisconnect(true);
   Bluefruit.Advertising.start(0);
-  Serial.println("PASS: bluetooth started");
-  Serial.println("connect with Bluefruit LE Connect now (30 seconds)");
+  Serial.println("bluetooth PASS: started, look for BottleRocket in the app");
+}
 
-  int waited = 0;
-  while (!Bluefruit.connected() && waited < 300) {
-    delay(100);
-    waited++;
-  }
-  if (!Bluefruit.connected()) {
-    Serial.println("FAIL: nothing connected");
-    return;
-  }
-  Serial.println("PASS: phone connected");
-  Serial.println("open Controller > Control Pad and press buttons (20 seconds)");
-
-  int presses = 0;
-  int counter = 0;
-  while (Bluefruit.connected() && counter < 200) {
-    if (bleuart.available() >= 5) {
-      if (bleuart.peek() != '!') {
-        bleuart.read();
-      } else {
-        int p[5];
-        for (int i = 0; i < 5; i++) p[i] = bleuart.read();
-        if (p[1] == 'B' && p[3] == '1') {
-          Serial.print("got button ");
-          Serial.println((char)p[2]);
-          presses++;
-        }
-      }
-    }
-    delay(100);
-    counter++;
-  }
-  if (presses > 0) {
-    Serial.println("PASS: buttons come through");
+void bluetoothStatus() {
+  if (Bluefruit.connected()) {
+    Serial.println("phone is connected, press buttons in the Control Pad");
   } else {
-    Serial.println("FAIL: connected but no button presses seen");
+    Serial.println("no phone connected yet");
   }
+}
+
+// prints any buttons coming from the phone
+void checkPhone() {
+  while (bleuart.available() >= 5) {
+    if (bleuart.peek() != '!') {
+      bleuart.read();
+      continue;
+    }
+    int p[5];
+    for (int i = 0; i < 5; i++) p[i] = bleuart.read();
+    if (p[1] == 'B' && p[3] == '1') {
+      Serial.print("phone button ");
+      Serial.println((char)p[2]);
+    }
+  }
+}
+
+void showHelp() {
+  Serial.println("1 = move servo 1");
+  Serial.println("2 = move servo 2");
+  Serial.println("3 = move both");
+  Serial.println("g = gyro numbers");
+  Serial.println("b = bluetooth status");
+  Serial.println("h = this list");
 }
 
 void setup() {
@@ -170,13 +150,28 @@ void setup() {
     wait++;
   }
   Serial.println("bottle rocket test");
-  delay(500);
-
-  testGyro();
-  testServos();
-  testBluetooth();
-  Serial.println("--- done ---");
+  servo1.attach(A3);
+  servo2.attach(A2);
+  servo1.write(90);
+  servo2.write(90);
+  startGyro();
+  startBluetooth();
+  showHelp();
 }
 
 void loop() {
+  checkPhone();
+
+  if (Serial.available()) {
+    char c = Serial.read();
+    if (c == '1') moveServo(servo1, "servo 1 (A3)");
+    if (c == '2') moveServo(servo2, "servo 2 (A2)");
+    if (c == '3') {
+      moveServo(servo1, "servo 1 (A3)");
+      moveServo(servo2, "servo 2 (A2)");
+    }
+    if (c == 'g') showGyro();
+    if (c == 'b') bluetoothStatus();
+    if (c == 'h') showHelp();
+  }
 }

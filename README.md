@@ -27,7 +27,8 @@ Power the board separately (USB or its battery connector).
 - `bottle_rocket_all/` - everything from the phone, upload this one for the
   demo (see below).
 - `bottle_rocket_test/` - checks the gyro, both servos and bluetooth one at a
-  time and prints PASS or FAIL in the serial monitor (115200).
+  time. Type 1, 2 or 3 in the serial monitor (115200) to move the servos, g
+  for gyro numbers, b for bluetooth status, h for the list.
 - `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
   them 3 times, 30 seconds apart.
 
