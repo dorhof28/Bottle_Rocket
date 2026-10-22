@@ -47,7 +47,7 @@ bool launched() {
 
 void setup() {
   CircuitPlayground.begin();
-  servo1.attach(A1);
+  servo1.attach(A3);
   servo2.attach(A2);
   setFins(0, 0);
 

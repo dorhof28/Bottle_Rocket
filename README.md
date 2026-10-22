@@ -5,7 +5,7 @@ Steer two fin servos from the iPhone with arrow buttons, over Bluetooth.
 ## Wiring
 | Servo wire | Goes to |
 |---|---|
-| Signal (orange/yellow) | servo 1 -> **A1**, servo 2 -> **A2** |
+| Signal (orange/yellow) | servo 1 -> **A3**, servo 2 -> **A2** |
 | Power (red) | battery pack +  (not the board's 3.3V pad - servos will brown out the board) |
 | Ground (brown/black) | battery pack - **and** a board GND pad (shared ground) |
 
@@ -26,6 +26,8 @@ Power the board separately (USB or its battery connector).
 - `bottle_rocket_demo/` - everything for the demo in one sketch, see below.
 - `bottle_rocket_all/` - everything from the phone, upload this one for the
   demo (see below).
+- `bottle_rocket_test/` - checks the gyro, both servos and bluetooth one at a
+  time and prints PASS or FAIL in the serial monitor (115200).
 - `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
   them 3 times, 30 seconds apart.
 
