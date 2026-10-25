@@ -73,8 +73,8 @@ void readGyro(float &x, float &z) {
 }
 
 void setup() {
-  servo1.attach(A3);
-  servo2.attach(A2);
+  servo1.attach(A6);
+  servo2.attach(A7);
   setFins(0, 0);
 
   Wire.begin();

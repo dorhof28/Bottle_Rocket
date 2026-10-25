@@ -3,10 +3,10 @@
 #include <Wire.h>
 
 // open the serial monitor (115200), type a letter and press enter
-// servo 1 is on A3, servo 2 is on A2, gyro on SDA / SCL
+// servo 1 is on A6 (RX), servo 2 is on A7 (TX), gyro on SDA / SCL
 
-int pin1 = A3;
-int pin2 = A2;
+int pin1 = A6;
+int pin2 = A7;
 
 Servo servo1;
 Servo servo2;
@@ -225,8 +225,8 @@ void checkPhone() {
 }
 
 void showHelp() {
-  Serial.println("1 = move servo 1 (A3)");
-  Serial.println("2 = move servo 2 (A2)");
+  Serial.println("1 = move servo 1 (A6, RX)");
+  Serial.println("2 = move servo 2 (A7, TX)");
   Serial.println("3 = move both");
   Serial.println("a = try a servo on every pad");
   Serial.println("r = raw pulses, no servo library");
@@ -258,11 +258,11 @@ void loop() {
 
   if (Serial.available()) {
     char c = Serial.read();
-    if (c == '1') moveServo(servo1, "servo 1 (A3)");
-    if (c == '2') moveServo(servo2, "servo 2 (A2)");
+    if (c == '1') moveServo(servo1, "servo 1 (A6, RX)");
+    if (c == '2') moveServo(servo2, "servo 2 (A7, TX)");
     if (c == '3') {
-      moveServo(servo1, "servo 1 (A3)");
-      moveServo(servo2, "servo 2 (A2)");
+      moveServo(servo1, "servo 1 (A6, RX)");
+      moveServo(servo2, "servo 2 (A7, TX)");
     }
     if (c == 'a') tryAllPads();
     if (c == 'r') rawTest();

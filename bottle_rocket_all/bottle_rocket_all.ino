@@ -2,39 +2,69 @@
 #include <Servo.h>
 #include <Wire.h>
 
-// settings
+// pins
+const int servo1Pin = A6;   // RX pad
+const int servo2Pin = A7;   // TX pad
+
+// fin settings
 int center1 = 90;      // servo 1 straight
 int center2 = 90;      // servo 2 straight
 int throwAmt = 20;     // fin angle from center
-bool flip1 = false;    // flip if fin goes the wrong way
+bool flip1 = false;    // flip if a fin goes the wrong way
 bool flip2 = true;
-float leanGain = 0.03;   // gyro: push per degree of lean
-float rateGain = 0.008;  // gyro: push per degree/sec
-float spinGain = 0.01;   // gyro: push against spin
+
+// gyro settings
+float tiltDead = 5;      // degrees of lean before the fins react
+float rateDead = 3;      // degrees/sec of turning before the fins react
+float leanGain = 0.03;   // push per degree of lean
+float rateGain = 0.008;  // push per degree/sec
+float spinGain = 0.01;   // push against spinning
 float gyroSign = 1;      // -1 if the fins follow the lean instead of fighting it
+
+// zigzag settings
+float launchG = 2.5;          // acceleration that counts as a launch
+long stepTime = 30000;        // 30 seconds between moves
+float zigSides[4] = {-1, 1, -1, 0};   // left, right, left, center
+
+// modes
+const int MANUAL = 0;
+const int GYRO = 1;
+const int ZIGZAG = 2;
+int mode = MANUAL;
 
 Servo servo1;
 Servo servo2;
 BLEUart bleuart;
 
+// gyro
 int gyroAddr = 0x6B;
 float biasX = 0, biasZ = 0;
 float lean = 0;
 long lastRead = 0;
 
-int rollCmd = 0;
-int pitchCmd = 0;
+// accelerometer on the board
+const int accelAddr = 0x19;
+bool accelOk = false;
 
-// 0 = phone arrows, 1 = gyro, 2 = zigzag, 3 = push button
-int mode = 0;
+// zigzag state
+bool launched = false;
+long launchTime = 0;
+int zigStep = -1;
+
+// push button state
 int pressCount = 0;
-int zigStep = 0;
-long zigTime = 0;
 
 float limit(float v, float lo, float hi) {
   if (v < lo) return lo;
   if (v > hi) return hi;
   return v;
+}
+
+// ignores small values, shrinks big ones by the dead zone
+float pastDead(float v, float dead) {
+  if (v > dead) return v - dead;
+  if (v < -dead) return v + dead;
+  return 0;
 }
 
 // move both fins
@@ -50,8 +80,8 @@ void setFins(float roll, float pitch) {
 }
 
 // gyro stuff
-void writeReg(int reg, int val) {
-  Wire.beginTransmission(gyroAddr);
+void writeReg(int addr, int reg, int val) {
+  Wire.beginTransmission(addr);
   Wire.write(reg);
   Wire.write(val);
   Wire.endTransmission();
@@ -90,12 +120,9 @@ void readGyro(float &x, float &z) {
 }
 
 void startGyro() {
-  Wire.begin();
-  if (!findGyro()) {
-    while (1) delay(100);
-  }
-  writeReg(0x20, 0x0F);
-  writeReg(0x23, 0x10);
+  if (!findGyro()) return;
+  writeReg(gyroAddr, 0x20, 0x0F);
+  writeReg(gyroAddr, 0x23, 0x10);
   delay(100);
 
   // average readings while it sits still
@@ -110,7 +137,7 @@ void startGyro() {
   biasZ = sumZ / 200;
 }
 
-// fins fight the lean
+// fins stay put until the lean is big enough, then they push back
 void runGyro() {
   long now = millis();
   if (now - lastRead < 10) return;
@@ -123,18 +150,61 @@ void runGyro() {
   rz -= biasZ;
   lean += rx * dt;
 
-  float push = (lean * leanGain + rx * rateGain) * gyroSign;
-  float spin = rz * spinGain * gyroSign;
-  setFins(-spin, -push);
+  float push = pastDead(lean, tiltDead) * leanGain + pastDead(rx, rateDead) * rateGain;
+  float spin = pastDead(rz, rateDead) * spinGain;
+  setFins(-spin * gyroSign, -push * gyroSign);
 }
 
-// zigzag, swaps sides every 0.4 sec
+// accelerometer stuff
+void startAccel() {
+  Wire.beginTransmission(accelAddr);
+  accelOk = (Wire.endTransmission() == 0);
+  if (!accelOk) return;
+  writeReg(accelAddr, 0x20, 0x57);
+  writeReg(accelAddr, 0x23, 0x28);
+}
+
+// total acceleration in g
+float readAccel() {
+  Wire.beginTransmission(accelAddr);
+  Wire.write(0xA8);
+  Wire.endTransmission(false);
+  Wire.requestFrom(accelAddr, 6);
+  float total = 0;
+  for (int i = 0; i < 3; i++) {
+    int low = Wire.read();
+    int high = Wire.read();
+    int raw = high * 256 + low;
+    if (raw > 32767) raw = raw - 65536;
+    float g = raw * 0.00025;
+    total += g * g;
+  }
+  return sqrt(total);
+}
+
+// zigzag: wait for launch, then left, right, left, center, 30 sec apart
+void startLaunch() {
+  launched = true;
+  launchTime = millis();
+  zigStep = -1;
+  bleuart.println("launch!");
+}
+
 void runZigzag() {
-  if (millis() - zigTime < 400) return;
-  zigTime = millis();
-  float side = (zigStep % 2 == 0) ? 1 : -1;
-  setFins(0, side);
-  zigStep++;
+  if (!launched) {
+    if (accelOk && readAccel() > launchG) startLaunch();
+    delay(10);
+    return;
+  }
+
+  int step = (millis() - launchTime) / stepTime;
+  if (step > 3) step = 3;
+  if (step == zigStep) return;
+
+  zigStep = step;
+  setFins(0, zigSides[step]);
+  bleuart.print("zigzag move ");
+  bleuart.println(step + 1);
 }
 
 // push button: left, center, right
@@ -146,52 +216,61 @@ void pushStep() {
 
 void changeMode(int newMode) {
   mode = newMode;
-  rollCmd = pitchCmd = 0;
   lean = 0;
   lastRead = millis();
-  zigStep = 0;
+  launched = false;
+  zigStep = -1;
   pressCount = 0;
   setFins(0, 0);
 }
 
-// same button again turns the mode off
-void toggleMode(int m, String name) {
-  if (mode == m) {
-    changeMode(0);
+// pressing the same mode button again goes back to manual
+void toggleMode(int newMode, String name) {
+  if (mode == newMode) {
+    changeMode(MANUAL);
     bleuart.print(name);
     bleuart.println(" off");
-  } else {
-    changeMode(m);
-    bleuart.print(name);
-    bleuart.println(" on");
+    return;
+  }
+  changeMode(newMode);
+  bleuart.print(name);
+  bleuart.println(" on");
+  if (newMode == ZIGZAG) {
+    if (accelOk) {
+      bleuart.println("waiting for launch (up arrow starts it now)");
+    } else {
+      bleuart.println("no accelerometer, up arrow starts it");
+    }
   }
 }
 
-// 1 gyro, 2 zigzag, 3 push button, 4 stop everything, arrows are 5-8
-void handleButton(int b, bool down) {
-  if (!down) {
-    if (b == '7' && rollCmd == -1) rollCmd = 0;
-    if (b == '8' && rollCmd == 1) rollCmd = 0;
-    if (b == '6' && pitchCmd == -1) pitchCmd = 0;
-    if (b == '5' && pitchCmd == 1) pitchCmd = 0;
-    if (mode == 0) setFins(rollCmd, pitchCmd);
+// arrows move the fins by hand
+void handleArrow(int b) {
+  if (mode == ZIGZAG && !launched && b == '5') {
+    startLaunch();
     return;
   }
+  if (mode != MANUAL) return;
 
-  switch (b) {
-    case '1': toggleMode(1, "gyro"); break;
-    case '2': toggleMode(2, "zigzag"); break;
-    case '3':
-      if (mode != 3) changeMode(3);
-      pushStep();
-      break;
-    case '4': changeMode(0); break;
-    case '5': pitchCmd = 1; break;
-    case '6': pitchCmd = -1; break;
-    case '7': rollCmd = -1; break;
-    case '8': rollCmd = 1; break;
+  pressCount = 0;
+  if (b == '7') setFins(0, -1);
+  if (b == '8') setFins(0, 1);
+  if (b == '5' || b == '6') setFins(0, 0);
+}
+
+// 1 gyro, 2 zigzag, 3 manual, 4 push button, arrows 5 up, 6 down, 7 left, 8 right
+void handleButton(int b) {
+  if (b == '1') toggleMode(GYRO, "gyro");
+  if (b == '2') toggleMode(ZIGZAG, "zigzag");
+  if (b == '3') {
+    changeMode(MANUAL);
+    bleuart.println("manual");
   }
-  if (mode == 0) setFins(rollCmd, pitchCmd);
+  if (b == '4') {
+    if (mode != MANUAL) changeMode(MANUAL);
+    pushStep();
+  }
+  if (b >= '5' && b <= '8') handleArrow(b);
 }
 
 void startAdvertising() {
@@ -206,10 +285,13 @@ void startAdvertising() {
 }
 
 void setup() {
-  servo1.attach(A3);
-  servo2.attach(A2);
+  servo1.attach(servo1Pin);
+  servo2.attach(servo2Pin);
   setFins(0, 0);
+
+  Wire.begin();
   startGyro();
+  startAccel();
 
   Bluefruit.begin();
   Bluefruit.setName("BottleRocket");
@@ -230,9 +312,9 @@ void loop() {
     int sum = 0;
     for (int i = 0; i < 4; i++) sum = sum + p[i];
     if (255 - (sum % 256) != p[4]) continue;
-    handleButton(p[2], p[3] == '1');
+    if (p[3] == '1') handleButton(p[2]);
   }
 
-  if (mode == 1) runGyro();
-  if (mode == 2) runZigzag();
+  if (mode == GYRO) runGyro();
+  if (mode == ZIGZAG) runZigzag();
 }

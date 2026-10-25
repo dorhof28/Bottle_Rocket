@@ -47,8 +47,8 @@ bool launched() {
 
 void setup() {
   CircuitPlayground.begin();
-  servo1.attach(A3);
-  servo2.attach(A2);
+  servo1.attach(A6);
+  servo2.attach(A7);
   setFins(0, 0);
 
   // left button starts it early, handy for testing on the bench

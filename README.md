@@ -5,7 +5,7 @@ Steer two fin servos from the iPhone with arrow buttons, over Bluetooth.
 ## Wiring
 | Servo wire | Goes to |
 |---|---|
-| Signal (orange/yellow) | servo 1 -> **A3**, servo 2 -> **A2** |
+| Signal (orange/yellow) | servo 1 -> **RX (A6)**, servo 2 -> **TX (A7)** |
 | Power (red) | battery pack +  (not the board's 3.3V pad - servos will brown out the board) |
 | Ground (brown/black) | battery pack - **and** a board GND pad (shared ground) |
 
@@ -91,18 +91,26 @@ button on the board to start it on the bench. The three sweeps happen at 30,
 60 and 90 seconds after launch.
 
 ## All-in-one sketch (bottle_rocket_all)
-Connect with Bluefruit LE Connect, then Controller > Control Pad. The Control
-Pad has no real switches, so the numbered buttons act as them. Press again to
-turn a mode off.
+Connect with Bluefruit LE Connect, then Controller > Control Pad. Servo 1 is
+on the RX pad and servo 2 is on the TX pad.
 
 | Button | What it does |
 |---|---|
-| Arrows | Remote control of the fins |
-| 1 | Gyro on/off, fins move opposite to the lean |
-| 2 | Zigzag on/off |
-| 3 | Push button: once = left, twice = center, three times = right, then repeats |
-| 4 | Stop everything and center the fins |
+| 1 | Gyro mode on/off |
+| 2 | Zigzag mode on/off |
+| 3 | Manual mode (arrows move the fins) |
+| 4 | Push button: once = left, twice = center, three times = right, repeats |
+| Left / Right arrow | Fins go left / right and stay there (manual mode) |
+| Up / Down arrow | Fins back to center (manual mode) |
 
-The app also has a UART screen if you want to see "gyro on", "zigzag off" etc.
-Keep the rocket still for a second or two at power up. Left and right in
-zigzag and push button mean both fins tilting the same way.
+- **Gyro:** the fins stay centered until the rocket leans more than
+  `tiltDead` degrees (5 by default), then they push the other way. Pressing 1
+  again goes back to manual.
+- **Zigzag:** press 2 to arm it. It waits for the launch (about 2.5 g on the
+  board's accelerometer), then moves left, waits 30 seconds, right, waits 30
+  seconds, left, waits 30 seconds, then goes to center. The Up arrow starts it
+  right away for bench testing.
+- The app's UART screen shows what the board is doing ("gyro on", "launch!").
+
+Keep the rocket still for a second or two at power up. Left and right mean
+both fins tilting the same way.

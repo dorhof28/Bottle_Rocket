@@ -17,7 +17,7 @@ float RATE_GAIN = 0.008;  // fin push per degree/sec
 float SPIN_GAIN = 0.01;   // fin push against spinning
 float STAB_SIGN = 1;      // set to -1 if the fins move the wrong way when you tilt it
 
-// Servo signal wires: A3 and A2 pads. Power servos from a separate 4xAA pack
+// Servo signal wires: A6 (RX) and A7 (TX) pads. Power servos from a separate 4xAA pack
 // (common ground with the board), NOT the board's 3.3V pad.
 Servo servo1;
 Servo servo2;
@@ -158,8 +158,8 @@ void disconnectCallback(uint16_t conn_handle, uint8_t reason) {
 }
 
 void setup() {
-  servo1.attach(A3);
-  servo2.attach(A2);
+  servo1.attach(A6);
+  servo2.attach(A7);
   setFins(0, 0);
   gyroSetup();
 
