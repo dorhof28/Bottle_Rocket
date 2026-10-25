@@ -108,10 +108,9 @@ on the RX pad and servo 2 is on the TX pad.
 - **Gyro:** the fins stay centered until the rocket leans more than
   `tiltDead` degrees (5 by default), then they push the other way. Pressing 1
   again goes back to manual.
-- **Zigzag:** press 2 to arm it. It waits for the launch (about 2.5 g on the
-  board's accelerometer), then moves left, waits 30 seconds, right, waits 30
-  seconds, left, waits 30 seconds, then goes to center. The Up arrow starts it
-  right away for bench testing.
+- **Zigzag:** press 2 and it starts 3 seconds later. It moves left, waits 30
+  seconds, right, waits 30 seconds, left, waits 30 seconds, then goes to
+  center. Press 2 again to cancel.
 - The app's UART screen shows what the board is doing ("gyro on", "launch!").
 
 Keep the rocket still for a second or two at power up. Left and right mean

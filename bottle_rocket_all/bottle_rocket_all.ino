@@ -22,7 +22,7 @@ float spinGain = 0.01;   // push against spinning
 float gyroSign = 1;      // -1 if the fins follow the lean instead of fighting it
 
 // zigzag settings
-float launchG = 2.5;          // acceleration that counts as a launch
+long startDelay = 3000;       // 3 seconds after pressing the button
 long stepTime = 30000;        // 30 seconds between moves
 float zigSides[4] = {-1, 1, -1, 0};   // left, right, left, center
 
@@ -42,13 +42,8 @@ float biasX = 0, biasZ = 0;
 float lean = 0;
 long lastRead = 0;
 
-// accelerometer on the board
-const int accelAddr = 0x19;
-bool accelOk = false;
-
 // zigzag state
-bool launched = false;
-long launchTime = 0;
+long zigStart = 0;
 int zigStep = -1;
 
 // push button state
@@ -155,49 +150,12 @@ void runGyro() {
   setFins(-spin * gyroSign, -push * gyroSign);
 }
 
-// accelerometer stuff
-void startAccel() {
-  Wire.beginTransmission(accelAddr);
-  accelOk = (Wire.endTransmission() == 0);
-  if (!accelOk) return;
-  writeReg(accelAddr, 0x20, 0x57);
-  writeReg(accelAddr, 0x23, 0x28);
-}
-
-// total acceleration in g
-float readAccel() {
-  Wire.beginTransmission(accelAddr);
-  Wire.write(0xA8);
-  Wire.endTransmission(false);
-  Wire.requestFrom(accelAddr, 6);
-  float total = 0;
-  for (int i = 0; i < 3; i++) {
-    int low = Wire.read();
-    int high = Wire.read();
-    int raw = high * 256 + low;
-    if (raw > 32767) raw = raw - 65536;
-    float g = raw * 0.00025;
-    total += g * g;
-  }
-  return sqrt(total);
-}
-
-// zigzag: wait for launch, then left, right, left, center, 30 sec apart
-void startLaunch() {
-  launched = true;
-  launchTime = millis();
-  zigStep = -1;
-  bleuart.println("launch!");
-}
-
+// zigzag: starts 3 sec after the button, then left, right, left, center, 30 sec apart
 void runZigzag() {
-  if (!launched) {
-    if (accelOk && readAccel() > launchG) startLaunch();
-    delay(10);
-    return;
-  }
+  long since = millis() - zigStart;
+  if (since < 0) return;
 
-  int step = (millis() - launchTime) / stepTime;
+  int step = since / stepTime;
   if (step > 3) step = 3;
   if (step == zigStep) return;
 
@@ -218,7 +176,6 @@ void changeMode(int newMode) {
   mode = newMode;
   lean = 0;
   lastRead = millis();
-  launched = false;
   zigStep = -1;
   pressCount = 0;
   setFins(0, 0);
@@ -236,20 +193,13 @@ void toggleMode(int newMode, String name) {
   bleuart.print(name);
   bleuart.println(" on");
   if (newMode == ZIGZAG) {
-    if (accelOk) {
-      bleuart.println("waiting for launch (up arrow starts it now)");
-    } else {
-      bleuart.println("no accelerometer, up arrow starts it");
-    }
+    zigStart = millis() + startDelay;
+    bleuart.println("starts in 3 seconds");
   }
 }
 
 // arrows move the fins by hand
 void handleArrow(int b) {
-  if (mode == ZIGZAG && !launched && b == '5') {
-    startLaunch();
-    return;
-  }
   if (mode != MANUAL) return;
 
   pressCount = 0;
@@ -291,7 +241,6 @@ void setup() {
 
   Wire.begin();
   startGyro();
-  startAccel();
 
   Bluefruit.begin();
   Bluefruit.setName("BottleRocket");
