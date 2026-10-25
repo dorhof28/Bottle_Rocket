@@ -30,6 +30,8 @@ Power the board separately (USB or its battery connector).
   time. Type 1, 2 or 3 in the serial monitor (115200) to move the servos, a to
   try a servo on every pad, r for raw pulses, i to scan for the gyro, g for
   gyro numbers, b for bluetooth status, h for the list.
+- `servo_setup/` - move the servos by hand from the serial monitor, then it
+  prints the center, throw and flip numbers to paste into the main sketch.
 - `servo_test_a3/` - moves one servo on A3 back and forth, nothing else.
 - `bottle_rocket_launch/` - waits for launch, zigzags the fins, then sweeps
   them 3 times, 30 seconds apart.
