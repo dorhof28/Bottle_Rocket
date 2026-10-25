@@ -16,6 +16,7 @@ bool flip2 = true;
 // gyro settings
 float tiltDead = 5;      // degrees of lean before the fins react
 float rateDead = 3;      // degrees/sec of turning before the fins react
+float driftDead = 1;     // turning slower than this is treated as noise
 float leanGain = 0.03;   // push per degree of lean
 float rateGain = 0.008;  // push per degree/sec
 float spinGain = 0.01;   // push against spinning
@@ -38,6 +39,7 @@ BLEUart bleuart;
 
 // gyro
 int gyroAddr = 0x6B;
+bool gyroOk = false;
 float biasX = 0, biasZ = 0;
 float lean = 0;
 long lastRead = 0;
@@ -114,13 +116,8 @@ void readGyro(float &x, float &z) {
   z = rawZ * 0.0175;
 }
 
-void startGyro() {
-  if (!findGyro()) return;
-  writeReg(gyroAddr, 0x20, 0x0F);
-  writeReg(gyroAddr, 0x23, 0x10);
-  delay(100);
-
-  // average readings while it sits still
+// average readings while it sits still, that is the gyro's zero
+void calibrateGyro() {
   float sumX = 0, sumZ = 0, x, z;
   for (int i = 0; i < 200; i++) {
     readGyro(x, z);
@@ -132,8 +129,18 @@ void startGyro() {
   biasZ = sumZ / 200;
 }
 
+void startGyro() {
+  gyroOk = findGyro();
+  if (!gyroOk) return;
+  writeReg(gyroAddr, 0x20, 0x0F);
+  writeReg(gyroAddr, 0x23, 0x10);
+  delay(100);
+  calibrateGyro();
+}
+
 // fins stay put until the lean is big enough, then they push back
 void runGyro() {
+  if (!gyroOk) return;
   long now = millis();
   if (now - lastRead < 10) return;
   float dt = (now - lastRead) / 1000.0;
@@ -143,7 +150,7 @@ void runGyro() {
   readGyro(rx, rz);
   rx -= biasX;
   rz -= biasZ;
-  lean += rx * dt;
+  lean += pastDead(rx, driftDead) * dt;
 
   float push = pastDead(lean, tiltDead) * leanGain + pastDead(rx, rateDead) * rateGain;
   float spin = pastDead(rz, rateDead) * spinGain;
@@ -188,6 +195,14 @@ void toggleMode(int newMode, String name) {
     bleuart.print(name);
     bleuart.println(" off");
     return;
+  }
+  if (newMode == GYRO) {
+    if (!gyroOk) {
+      bleuart.println("gyro not found");
+      return;
+    }
+    bleuart.println("hold it still...");
+    calibrateGyro();
   }
   changeMode(newMode);
   bleuart.print(name);
