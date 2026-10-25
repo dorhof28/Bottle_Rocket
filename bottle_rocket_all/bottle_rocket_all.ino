@@ -9,8 +9,7 @@ const int servo2Pin = A7;   // TX pad
 // fin settings
 int center1 = 72;      // servo 1 straight
 int center2 = 45;      // servo 2 straight
-int throwAmt = 20;     // most the fins can move from center
-int stepAmt = 5;       // degrees each arrow press moves them
+int throwAmt = 20;     // fin angle from center
 bool flip1 = false;    // flip if a fin goes the wrong way
 bool flip2 = true;
 
@@ -47,9 +46,8 @@ long lastRead = 0;
 long zigStart = 0;
 int zigStep = -1;
 
-// push button and arrow state
+// push button state
 int pressCount = 0;
-float finPos = 0;   // -1 is full left, 1 is full right
 
 float limit(float v, float lo, float hi) {
   if (v < lo) return lo;
@@ -170,8 +168,7 @@ void runZigzag() {
 // push button: left, center, right
 void pushStep() {
   float spots[3] = {-1, 0, 1};
-  finPos = spots[pressCount % 3];
-  setFins(0, finPos);
+  setFins(0, spots[pressCount % 3]);
   pressCount++;
 }
 
@@ -181,7 +178,6 @@ void changeMode(int newMode) {
   lastRead = millis();
   zigStep = -1;
   pressCount = 0;
-  finPos = 0;
   setFins(0, 0);
 }
 
@@ -207,11 +203,9 @@ void handleArrow(int b) {
   if (mode != MANUAL) return;
 
   pressCount = 0;
-  float stepSize = (float)stepAmt / throwAmt;
-  if (b == '7') finPos = limit(finPos - stepSize, -1, 1);
-  if (b == '8') finPos = limit(finPos + stepSize, -1, 1);
-  if (b == '5' || b == '6') finPos = 0;
-  setFins(0, finPos);
+  if (b == '7') setFins(0, -1);
+  if (b == '8') setFins(0, 1);
+  if (b == '5' || b == '6') setFins(0, 0);
 }
 
 // 1 gyro, 2 zigzag, 3 manual, 4 push button, arrows 5 up, 6 down, 7 left, 8 right
