@@ -102,7 +102,7 @@ on the RX pad and servo 2 is on the TX pad.
 | 2 | Zigzag mode on/off |
 | 3 | Manual mode (arrows move the fins) |
 | 4 | Push button: once = left, twice = center, three times = right, repeats |
-| Left / Right arrow | Fins go left / right and stay there (manual mode) |
+| Left / Right arrow | Fins move a step left / right each press, up to the max (manual mode) |
 | Up / Down arrow | Fins back to center (manual mode) |
 
 - **Gyro:** the fins stay centered until the rocket leans more than
@@ -114,4 +114,5 @@ on the RX pad and servo 2 is on the TX pad.
 - The app's UART screen shows what the board is doing ("gyro on", "zigzag move 2").
 
 Keep the rocket still for a second or two at power up. Left and right mean
-both fins tilting the same way.
+both fins tilting the same way. `stepAmt` is the size of each arrow press and
+`throwAmt` is the max.
