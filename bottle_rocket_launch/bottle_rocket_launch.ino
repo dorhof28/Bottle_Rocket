@@ -1,8 +1,8 @@
 #include <Adafruit_CircuitPlayground.h>
 #include <Servo.h>
 
-int CENTER_1 = 90;
-int CENTER_2 = 90;
+int CENTER_1 = 72;
+int CENTER_2 = 45;
 int THROW = 25;
 bool INVERT_1 = false;
 bool INVERT_2 = true;

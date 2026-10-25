@@ -2,8 +2,8 @@
 #include <Servo.h>
 #include <Wire.h>
 
-int CENTER_1 = 90;        // servo 1 angle when fin is straight (trim so fin looks flush)
-int CENTER_2 = 90;        // servo 2 angle when fin is straight
+int CENTER_1 = 72;        // servo 1 angle when fin is straight (trim so fin looks flush)
+int CENTER_2 = 45;        // servo 2 angle when fin is straight
 int THROW = 20;           // degrees of fin deflection from center
 bool INVERT_1 = false;    // flip a servo if its fin tilts the wrong way
 bool INVERT_2 = true;     // fins face opposite ways, so servo 2 is usually mirrored.

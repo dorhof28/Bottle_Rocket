@@ -7,8 +7,8 @@ const int servo1Pin = A6;   // RX pad
 const int servo2Pin = A7;   // TX pad
 
 // fin settings
-int center1 = 90;      // servo 1 straight
-int center2 = 90;      // servo 2 straight
+int center1 = 72;      // servo 1 straight
+int center2 = 45;      // servo 2 straight
 int throwAmt = 20;     // fin angle from center
 bool flip1 = false;    // flip if a fin goes the wrong way
 bool flip2 = true;
