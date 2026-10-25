@@ -14,13 +14,10 @@ bool flip1 = false;    // flip if a fin goes the wrong way
 bool flip2 = true;
 
 // gyro settings
-float tiltDead = 5;      // degrees of lean before the fins react
-float rateDead = 3;      // degrees/sec of turning before the fins react
-float driftDead = 1;     // turning slower than this is treated as noise
-float leanGain = 0.03;   // push per degree of lean
-float rateGain = 0.008;  // push per degree/sec
-float spinGain = 0.01;   // push against spinning
-float gyroSign = 1;      // -1 if the fins follow the lean instead of fighting it
+int tiltLimit = 5;       // degrees of lean before the fins move
+int gyroMove = 15;       // how far the fins move when it leans
+float noise = 1;         // turning slower than this (degrees/sec) is ignored
+int gyroDirection = 1;   // -1 if the fins go the same way as the lean
 
 // zigzag settings
 long startDelay = 3000;       // 3 seconds after pressing the button
@@ -40,7 +37,7 @@ BLEUart bleuart;
 // gyro
 int gyroAddr = 0x6B;
 bool gyroOk = false;
-float biasX = 0, biasZ = 0;
+float bias = 0;
 float lean = 0;
 long lastRead = 0;
 
@@ -55,13 +52,6 @@ float limit(float v, float lo, float hi) {
   if (v < lo) return lo;
   if (v > hi) return hi;
   return v;
-}
-
-// ignores small values, shrinks big ones by the dead zone
-float pastDead(float v, float dead) {
-  if (v > dead) return v - dead;
-  if (v < -dead) return v + dead;
-  return 0;
 }
 
 // move both fins
@@ -97,36 +87,27 @@ bool findGyro() {
   return false;
 }
 
-void readGyro(float &x, float &z) {
+// turning speed around the x axis in degrees per second
+float readGyro() {
   Wire.beginTransmission(gyroAddr);
   Wire.write(0xA8);
   Wire.endTransmission(false);
-  Wire.requestFrom(gyroAddr, 6);
-  int xl = Wire.read();
-  int xh = Wire.read();
-  Wire.read();
-  Wire.read();
-  int zl = Wire.read();
-  int zh = Wire.read();
-  int rawX = xh * 256 + xl;
-  int rawZ = zh * 256 + zl;
-  if (rawX > 32767) rawX = rawX - 65536;
-  if (rawZ > 32767) rawZ = rawZ - 65536;
-  x = rawX * 0.0175;
-  z = rawZ * 0.0175;
+  Wire.requestFrom(gyroAddr, 2);
+  int low = Wire.read();
+  int high = Wire.read();
+  int raw = high * 256 + low;
+  if (raw > 32767) raw = raw - 65536;
+  return raw * 0.0175;
 }
 
-// average readings while it sits still, that is the gyro's zero
+// average a bunch of readings while it sits still, that is the gyro's zero
 void calibrateGyro() {
-  float sumX = 0, sumZ = 0, x, z;
+  float total = 0;
   for (int i = 0; i < 200; i++) {
-    readGyro(x, z);
-    sumX += x;
-    sumZ += z;
+    total += readGyro();
     delay(5);
   }
-  biasX = sumX / 200;
-  biasZ = sumZ / 200;
+  bias = total / 200;
 }
 
 void startGyro() {
@@ -138,7 +119,7 @@ void startGyro() {
   calibrateGyro();
 }
 
-// fins stay put until the lean is big enough, then they push back
+// keeps track of the lean, fins go the other way once it leans enough
 void runGyro() {
   if (!gyroOk) return;
   long now = millis();
@@ -146,15 +127,19 @@ void runGyro() {
   float dt = (now - lastRead) / 1000.0;
   lastRead = now;
 
-  float rx, rz;
-  readGyro(rx, rz);
-  rx -= biasX;
-  rz -= biasZ;
-  lean += pastDead(rx, driftDead) * dt;
+  float rate = readGyro() - bias;
+  if (abs(rate) > noise) {
+    lean = lean + rate * dt;
+  }
 
-  float push = pastDead(lean, tiltDead) * leanGain + pastDead(rx, rateDead) * rateGain;
-  float spin = pastDead(rz, rateDead) * spinGain;
-  setFins(-spin * gyroSign, -push * gyroSign);
+  float amount = (float)gyroMove / throwAmt * gyroDirection;
+  if (lean > tiltLimit) {
+    setFins(0, -amount);
+  } else if (lean < -tiltLimit) {
+    setFins(0, amount);
+  } else {
+    setFins(0, 0);
+  }
 }
 
 // zigzag: starts 3 sec after the button, then left, right, left, center, 30 sec apart

@@ -105,9 +105,10 @@ on the RX pad and servo 2 is on the TX pad.
 | Left / Right arrow | Fins go left / right and stay there (manual mode) |
 | Up / Down arrow | Fins back to center (manual mode) |
 
-- **Gyro:** the fins stay centered until the rocket leans more than
-  `tiltDead` degrees (5 by default), then they push the other way. Pressing 1
-  again goes back to manual.
+- **Gyro:** hold it still when you press 1, it sets the gyro's zero. After
+  that, if the rocket leans more than `tiltLimit` degrees (5) one way, the fins
+  move `gyroMove` degrees (15) the other way. Back under the limit and the
+  fins go back to center. Press 1 again for manual.
 - **Zigzag:** press 2 and it starts 3 seconds later. It moves left, waits 30
   seconds, right, waits 30 seconds, left, waits 30 seconds, then goes to
   center. Press 2 again to cancel.
