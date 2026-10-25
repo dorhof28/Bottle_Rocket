@@ -111,7 +111,7 @@ on the RX pad and servo 2 is on the TX pad.
 - **Zigzag:** press 2 and it starts 3 seconds later. It moves left, waits 30
   seconds, right, waits 30 seconds, left, waits 30 seconds, then goes to
   center. Press 2 again to cancel.
-- The app's UART screen shows what the board is doing ("gyro on", "launch!").
+- The app's UART screen shows what the board is doing ("gyro on", "zigzag move 2").
 
 Keep the rocket still for a second or two at power up. Left and right mean
 both fins tilting the same way.
